@@ -7,20 +7,12 @@
   <style>
     :root { --btnW: 140px; --btnH: 56px; }
 
-    html, body {
-      height: 100%;
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    }
-
+    html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
     body {
-      /* ✅ Background image */
       background: url("background.jpg") center/cover no-repeat fixed;
       position: relative;
       overflow: hidden;
     }
-
-    /* Dark overlay so text is readable */
     body::before{
       content:"";
       position:absolute; inset:0;
@@ -42,17 +34,16 @@
       color: #fff;
       font-size: clamp(2rem, 5vw, 4rem);
       margin: 0 0 24px;
-      letter-spacing: 0.5px;
       text-shadow: 0 8px 24px rgba(0,0,0,0.45);
     }
 
+    /* Make the arena a bounded area for wrap-around movement */
     .btn-row {
       position: relative;
-      display: flex;
-      gap: 16px;
-      justify-content: center;
-      align-items: center;
-      min-height: calc(var(--btnH) + 10px);
+      width: min(720px, 92vw);
+      height: 140px;               /* room for up/down motion */
+      display: block;
+      margin: 0 auto;
     }
 
     button {
@@ -63,27 +54,28 @@
       font-size: 1.1rem;
       cursor: pointer;
       box-shadow: 0 12px 28px rgba(0,0,0,0.35);
-      transition: transform 120ms ease;
       user-select: none;
     }
 
     #yesBtn {
+      position: absolute;
+      left: calc(50% - var(--btnW) - 14px);
+      top: calc(50% - var(--btnH)/2);
       background: #2ee59d;
       color: #083a27;
       font-weight: 700;
     }
-    #yesBtn:active { transform: scale(0.98); }
 
-    /* The "No" button will be absolutely positioned so it can run away */
     #noBtn {
+      position: absolute;
+      left: calc(50% + 14px);
+      top: calc(50% - var(--btnH)/2);
       background: #ff5c70;
       color: #3a0b12;
       font-weight: 700;
-      position: absolute;
-      left: calc(50% + 90px);  /* starts to the right of Yes */
-      top: 0;
       cursor: not-allowed;
       touch-action: none;
+      will-change: left, top;
     }
 
     .toast {
@@ -115,92 +107,111 @@
     const yesBtn = document.getElementById("yesBtn");
     const toast = document.getElementById("toast");
 
-    // Initial placement (relative to the arena)
-    function placeNoInitially() {
-      const a = arena.getBoundingClientRect();
-      noBtn.style.left = Math.min(a.width - noBtn.offsetWidth, (a.width / 2) + 90) + "px";
-      noBtn.style.top = "0px";
+    // --- movement tuning ---
+    const TRIGGER_RADIUS = 140; // when cursor within this distance, run away
+    const STEP = 18;            // speed per tick (px)
+    const JITTER = 0.35;        // adds slight randomness
+    const MAX_TICKS_PER_MOVE = 6; // how many small steps per event for smoothness
+
+    // Store position in arena coordinates (px)
+    let noX = 0, noY = 0;
+
+    function arenaRect() { return arena.getBoundingClientRect(); }
+
+    function wrap(value, size) {
+      // wrap value into [0, size)
+      value = value % size;
+      return value < 0 ? value + size : value;
     }
 
-    // Utility
-    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    function clampYesInside() {
+      // keep "Yes" centered even if arena resizes (CSS handles it)
+    }
 
-    function moveNoAwayFrom(pointerX, pointerY) {
-      const a = arena.getBoundingClientRect();
+    function initNoPosition() {
+      const a = arenaRect();
+      // start to the right of yes, centered vertically
+      noX = (a.width / 2) + 14;
+      noY = (a.height / 2) - (noBtn.offsetHeight / 2);
+      // ensure within arena with wrap
+      noX = wrap(noX, Math.max(1, a.width - noBtn.offsetWidth));
+      noY = wrap(noY, Math.max(1, a.height - noBtn.offsetHeight));
+      renderNo();
+    }
 
-      // Current center of the No button
-      const noRect = noBtn.getBoundingClientRect();
-      const noCenterX = noRect.left + noRect.width / 2;
-      const noCenterY = noRect.top + noRect.height / 2;
+    function renderNo() {
+      noBtn.style.left = `${noX}px`;
+      noBtn.style.top = `${noY}px`;
+    }
 
-      // Direction away from pointer
-      let dx = noCenterX - pointerX;
-      let dy = noCenterY - pointerY;
+    function moveNoAway(pointerClientX, pointerClientY) {
+      const a = arenaRect();
+
+      // Pointer position in arena coordinates
+      const px = pointerClientX - a.left;
+      const py = pointerClientY - a.top;
+
+      // No button center in arena coordinates
+      const cx = noX + noBtn.offsetWidth / 2;
+      const cy = noY + noBtn.offsetHeight / 2;
+
+      // Distance check
+      const dx0 = cx - px;
+      const dy0 = cy - py;
+      const dist = Math.hypot(dx0, dy0);
+
+      if (dist > TRIGGER_RADIUS) return;
+
+      // Normalize direction away from pointer
+      let dx = dx0 / (dist || 1);
+      let dy = dy0 / (dist || 1);
+
+      // Add small random jitter to avoid getting "stuck" in symmetric situations
+      dx += (Math.random() - 0.5) * JITTER;
+      dy += (Math.random() - 0.5) * JITTER;
 
       const len = Math.hypot(dx, dy) || 1;
       dx /= len; dy /= len;
 
-      // How far to jump each time
-      const jump = 140;
+      // Move in a few smaller ticks for smoother feel
+      const usableW = Math.max(1, a.width - noBtn.offsetWidth);
+      const usableH = Math.max(1, a.height - noBtn.offsetHeight);
 
-      // Current position within arena (read from style)
-      const curLeft = parseFloat(noBtn.style.left || "0");
-      const curTop  = parseFloat(noBtn.style.top  || "0");
-
-      let nextLeft = curLeft + dx * jump;
-      let nextTop  = curTop  + dy * jump;
-
-      // Keep inside arena bounds
-      nextLeft = clamp(nextLeft, 0, a.width - noBtn.offsetWidth);
-      nextTop  = clamp(nextTop, 0, a.height - noBtn.offsetHeight);
-
-      // If we somehow didn't move (corner case), randomize a little
-      if (Math.abs(nextLeft - curLeft) < 5 && Math.abs(nextTop - curTop) < 5) {
-        nextLeft = Math.random() * (a.width - noBtn.offsetWidth);
-        nextTop  = Math.random() * (a.height - noBtn.offsetHeight);
+      for (let i = 0; i < MAX_TICKS_PER_MOVE; i++) {
+        noX = wrap(noX + dx * STEP, usableW);
+        noY = wrap(noY + dy * STEP, usableH);
       }
 
-      noBtn.style.left = nextLeft + "px";
-      noBtn.style.top  = nextTop + "px";
+      renderNo();
     }
 
-    // "No" cannot be clicked: prevent click and also make it run away on approach
+    // Prevent clicking "No"
     noBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       toast.textContent = "Nice try 😄";
     });
 
-    // Runs away when mouse gets close
-    arena.addEventListener("mousemove", (e) => {
-      const noRect = noBtn.getBoundingClientRect();
-      const cx = noRect.left + noRect.width / 2;
-      const cy = noRect.top + noRect.height / 2;
+    // Mouse: run away with wrap-around (both x and y)
+    arena.addEventListener("mousemove", (e) => moveNoAway(e.clientX, e.clientY));
 
-      const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
-      const triggerRadius = 120; // distance threshold
-
-      if (dist < triggerRadius) moveNoAwayFrom(e.clientX, e.clientY);
-    });
-
-    // Works on touch devices too (finger gets close)
+    // Touch support
     arena.addEventListener("touchstart", (e) => {
       const t = e.touches[0];
-      moveNoAwayFrom(t.clientX, t.clientY);
+      moveNoAway(t.clientX, t.clientY);
     }, { passive: true });
 
     arena.addEventListener("touchmove", (e) => {
       const t = e.touches[0];
-      moveNoAwayFrom(t.clientX, t.clientY);
+      moveNoAway(t.clientX, t.clientY);
     }, { passive: true });
 
     yesBtn.addEventListener("click", () => {
       toast.textContent = "Yay! 🎉";
     });
 
-    // Initialize
-    window.addEventListener("load", placeNoInitially);
-    window.addEventListener("resize", placeNoInitially);
+    window.addEventListener("load", initNoPosition);
+    window.addEventListener("resize", initNoPosition);
   </script>
 </body>
 </html>
