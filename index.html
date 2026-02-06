@@ -1,217 +1,324 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Yes or No</title>
-  <style>
-    :root { --btnW: 140px; --btnH: 56px; }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Yes or No</title>
 
-    html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-    body {
-      background: url("background.jpg") center/cover no-repeat fixed;
-      position: relative;
-      overflow: hidden;
-    }
-    body::before{
-      content:"";
-      position:absolute; inset:0;
-      background: rgba(0,0,0,0.45);
-      pointer-events:none;
-    }
+<style>
+  :root { --btnW: 140px; --btnH: 56px; }
 
-    .wrap {
-      position: relative;
-      z-index: 1;
-      height: 100%;
-      display: grid;
-      place-items: center;
-      text-align: center;
-      padding: 24px;
-    }
+  html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; overflow: hidden; }
+  body { background: url("background.jpg") center/cover no-repeat fixed; position: relative; }
+  body::before{ content:""; position:absolute; inset:0; background: rgba(0,0,0,0.45); pointer-events:none; }
 
-    h1 {
-      color: #fff;
-      font-size: clamp(2rem, 5vw, 4rem);
-      margin: 0 0 24px;
-      text-shadow: 0 8px 24px rgba(0,0,0,0.45);
-    }
+  .wrap { position: relative; z-index: 2; height: 100%; display: grid; place-items: center; text-align: center; padding: 24px; }
 
-    /* Make the arena a bounded area for wrap-around movement */
-    .btn-row {
-      position: relative;
-      width: min(720px, 92vw);
-      height: 140px;               /* room for up/down motion */
-      display: block;
-      margin: 0 auto;
-    }
+  h1 {
+    color: #fff;
+    font-size: clamp(2rem, 5vw, 4rem);
+    margin: 0 0 24px;
+    text-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    transition: 0.35s ease;
+  }
 
-    button {
-      width: var(--btnW);
-      height: var(--btnH);
-      border: none;
-      border-radius: 14px;
-      font-size: 1.1rem;
-      cursor: pointer;
-      box-shadow: 0 12px 28px rgba(0,0,0,0.35);
-      user-select: none;
-    }
+  .btn-row { position: relative; width: min(760px, 92vw); height: 160px; margin: 0 auto; }
 
-    #yesBtn {
-      position: absolute;
-      left: calc(50% - var(--btnW) - 14px);
-      top: calc(50% - var(--btnH)/2);
-      background: #2ee59d;
-      color: #083a27;
-      font-weight: 700;
-    }
+  button {
+    width: var(--btnW); height: var(--btnH);
+    border: none; border-radius: 14px; font-size: 1.1rem;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+    user-select: none;
+  }
 
-    #noBtn {
-      position: absolute;
-      left: calc(50% + 14px);
-      top: calc(50% - var(--btnH)/2);
-      background: #ff5c70;
-      color: #3a0b12;
-      font-weight: 700;
-      cursor: not-allowed;
-      touch-action: none;
-      will-change: left, top;
-    }
+  #yesBtn {
+    position: absolute;
+    left: calc(50% - var(--btnW) - 14px);
+    top: calc(50% - var(--btnH)/2);
+    background: #2ee59d; color: #083a27;
+    font-weight: 700; cursor: pointer;
+  }
 
-    .toast {
-      margin-top: 18px;
-      color: rgba(255,255,255,0.9);
-      font-size: 1rem;
-      text-shadow: 0 6px 20px rgba(0,0,0,0.45);
-      min-height: 1.2em;
-    }
-  </style>
+  #noBtn {
+    position: absolute;
+    left: calc(50% + 14px);
+    top: calc(50% - var(--btnH)/2);
+    background: #ff5c70; color: #3a0b12;
+    font-weight: 700; cursor: not-allowed;
+    touch-action: none;
+    will-change: left, top;
+  }
+
+  .toast { margin-top: 18px; color: rgba(255,255,255,0.9); font-size: 1rem; min-height: 1.2em; text-shadow: 0 6px 20px rgba(0,0,0,0.45); }
+
+  .heart-img {
+    position: fixed;
+    bottom: -140px;
+    pointer-events: none;
+    animation: floatUp linear forwards;
+    z-index: 1;
+    filter: drop-shadow(0 12px 28px rgba(0,0,0,0.25));
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(-130vh) rotate(360deg); opacity: 0; }
+  }
+</style>
 </head>
+
 <body>
-  <div class="wrap">
-    <div>
-      <h1>Will you go on a date with me?</h1>
+<div class="wrap">
+  <div>
+    <h1 id="mainText">Will you go on a date with me?</h1>
 
-      <div class="btn-row" id="arena">
-        <button id="yesBtn">Yes</button>
-        <button id="noBtn" aria-disabled="true" tabindex="-1">No</button>
-      </div>
-
-      <div class="toast" id="toast"></div>
+    <div class="btn-row" id="arena">
+      <button id="yesBtn">Yes</button>
+      <button id="noBtn" aria-disabled="true" tabindex="-1">No</button>
     </div>
+
+    <div class="toast" id="toast"></div>
   </div>
+</div>
 
-  <script>
-    const arena = document.getElementById("arena");
-    const noBtn = document.getElementById("noBtn");
-    const yesBtn = document.getElementById("yesBtn");
-    const toast = document.getElementById("toast");
+<script>
+  const arena = document.getElementById("arena");
+  const noBtn = document.getElementById("noBtn");
+  const yesBtn = document.getElementById("yesBtn");
+  const toast = document.getElementById("toast");
+  const mainText = document.getElementById("mainText");
 
-    // --- movement tuning ---
-    const TRIGGER_RADIUS = 140; // when cursor within this distance, run away
-    const STEP = 18;            // speed per tick (px)
-    const JITTER = 0.35;        // adds slight randomness
-    const MAX_TICKS_PER_MOVE = 6; // how many small steps per event for smoothness
+  // Smooth flee tuning
+  const TRIGGER_RADIUS = 120;
+  const MOVE_FACTOR = 0.22;
+  const MAX_STEP = 16;
+  const FRICTION = 0.88;
 
-    // Store position in arena coordinates (px)
-    let noX = 0, noY = 0;
+  // Random jump tuning
+  const CLICK_MIN_DIST = 100;
+  const CLICK_TRIES = 80;
 
-    function arenaRect() { return arena.getBoundingClientRect(); }
+  // ✅ Bias toward center
+  const CENTER_BIAS = 1;     // 0..1 higher => center more often
+  const CENTER_SPREAD = 0.1;   // smaller => tighter around center
 
-    function wrap(value, size) {
-      // wrap value into [0, size)
-      value = value % size;
-      return value < 0 ? value + size : value;
+  // Heart images (keep your generated PNGs next to index.html)
+  const heartImages = [
+    "heart-red.png",
+    "heart-pink.png",
+    "heart-purple.png",
+    "heart-blue.png",
+    "heart-gold.png",
+  ];
+
+  let x = 0, y = 0, vx = 0, vy = 0;
+  let pointer = { x: null, y: null };
+  let rafId = null;
+  let toastTimer = null;
+  let heartsTimer = null;
+  let accepted = false;
+
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  function rect() { return arena.getBoundingClientRect(); }
+
+  function render() {
+    const a = rect();
+    const maxX = Math.max(0, a.width - noBtn.offsetWidth);
+    const maxY = Math.max(0, a.height - noBtn.offsetHeight);
+    x = clamp(x, 0, maxX);
+    y = clamp(y, 0, maxY);
+    noBtn.style.left = `${x}px`;
+    noBtn.style.top  = `${y}px`;
+  }
+
+  function defaultNoPosition() {
+    const a = rect();
+    x = (a.width / 2) + 14;
+    y = (a.height / 2) - (noBtn.offsetHeight / 2);
+    vx = 0; vy = 0;
+    render();
+  }
+
+  function showToast(msg, ms = 2000) {
+    toast.textContent = msg;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.textContent = "";
+      toastTimer = null;
+    }, ms);
+  }
+
+  // --- Center-biased sampler (more likely near center, still can reach edges) ---
+  // Mix: with prob CENTER_BIAS sample from N(center, spread), else uniform.
+  function randCenterBiased(min, max) {
+    const range = max - min;
+    if (range <= 0) return min;
+
+    if (Math.random() < CENTER_BIAS) {
+      // Box-Muller Gaussian
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v); // ~N(0,1)
+
+      const center = min + range / 2;
+      const sigma = range * CENTER_SPREAD; // spread around center
+      const val = center + z * sigma;
+
+      // soft clamp (still keeps heavy mass near center)
+      return clamp(val, min, max);
+    } else {
+      return min + Math.random() * range;
+    }
+  }
+
+  function moveNoRandomAwayFromCursor() {
+    const a = rect();
+    const maxX = Math.max(0, a.width - noBtn.offsetWidth);
+    const maxY = Math.max(0, a.height - noBtn.offsetHeight);
+
+    // cursor in arena coords; fallback center
+    const px = (pointer.x == null) ? (a.width / 2) : (pointer.x - a.left);
+    const py = (pointer.y == null) ? (a.height / 2) : (pointer.y - a.top);
+
+    let best = null;
+
+    for (let i = 0; i < CLICK_TRIES; i++) {
+      // ✅ center-biased candidates
+      const rx = randCenterBiased(0, maxX);
+      const ry = randCenterBiased(0, maxY);
+
+      const cx = rx + noBtn.offsetWidth / 2;
+      const cy = ry + noBtn.offsetHeight / 2;
+
+      const d = Math.hypot(cx - px, cy - py);
+
+      if (d >= CLICK_MIN_DIST) { best = { rx, ry, d }; break; }
+      if (!best || d > best.d) best = { rx, ry, d };
     }
 
-    function clampYesInside() {
-      // keep "Yes" centered even if arena resizes (CSS handles it)
+    x = best.rx;
+    y = best.ry;
+
+    // tiny shove away from cursor
+    const cx = x + noBtn.offsetWidth / 2;
+    const cy = y + noBtn.offsetHeight / 2;
+    let dx = cx - px, dy = cy - py;
+    const dist = Math.hypot(dx, dy) || 1;
+    dx /= dist; dy /= dist;
+
+    vx = dx * MAX_STEP * 0.8;
+    vy = dy * MAX_STEP * 0.8;
+
+    render();
+    scheduleTick();
+  }
+
+  function tick() {
+    rafId = null;
+    if (pointer.x == null || accepted) return;
+
+    const a = rect();
+    const px = pointer.x - a.left;
+    const py = pointer.y - a.top;
+
+    const cx = x + noBtn.offsetWidth / 2;
+    const cy = y + noBtn.offsetHeight / 2;
+
+    const dx = cx - px;
+    const dy = cy - py;
+    const dist = Math.hypot(dx, dy) || 1;
+
+    if (dist < TRIGGER_RADIUS) {
+      const ux = dx / dist;
+      const uy = dy / dist;
+      const closeness = (TRIGGER_RADIUS - dist) / TRIGGER_RADIUS;
+      const accel = MOVE_FACTOR * (0.6 + 1.4 * closeness);
+      vx += ux * accel * 60;
+      vy += uy * accel * 60;
     }
 
-    function initNoPosition() {
-      const a = arenaRect();
-      // start to the right of yes, centered vertically
-      noX = (a.width / 2) + 14;
-      noY = (a.height / 2) - (noBtn.offsetHeight / 2);
-      // ensure within arena with wrap
-      noX = wrap(noX, Math.max(1, a.width - noBtn.offsetWidth));
-      noY = wrap(noY, Math.max(1, a.height - noBtn.offsetHeight));
-      renderNo();
+    const vmag = Math.hypot(vx, vy);
+    if (vmag > MAX_STEP) {
+      vx = (vx / vmag) * MAX_STEP;
+      vy = (vy / vmag) * MAX_STEP;
     }
 
-    function renderNo() {
-      noBtn.style.left = `${noX}px`;
-      noBtn.style.top = `${noY}px`;
+    x += vx; y += vy;
+
+    const maxX = Math.max(0, a.width - noBtn.offsetWidth);
+    const maxY = Math.max(0, a.height - noBtn.offsetHeight);
+    x = clamp(x, 0, maxX);
+    y = clamp(y, 0, maxY);
+
+    vx *= FRICTION;
+    vy *= FRICTION;
+
+    render();
+
+    if (Math.hypot(vx, vy) > 0.15 || dist < TRIGGER_RADIUS) {
+      rafId = requestAnimationFrame(tick);
     }
+  }
 
-    function moveNoAway(pointerClientX, pointerClientY) {
-      const a = arenaRect();
+  function scheduleTick() {
+    if (!rafId) rafId = requestAnimationFrame(tick);
+  }
 
-      // Pointer position in arena coordinates
-      const px = pointerClientX - a.left;
-      const py = pointerClientY - a.top;
+  function createHeart() {
+    const img = document.createElement("img");
+    img.className = "heart-img";
+    img.src = heartImages[Math.floor(Math.random() * heartImages.length)];
 
-      // No button center in arena coordinates
-      const cx = noX + noBtn.offsetWidth / 2;
-      const cy = noY + noBtn.offsetHeight / 2;
+    const size = 120 + Math.random() * 160;
+    img.style.width = `${size}px`;
+    img.style.left = `${Math.random() * 100}vw`;
+    img.style.animationDuration = `${4 + Math.random() * 4}s`;
 
-      // Distance check
-      const dx0 = cx - px;
-      const dy0 = cy - py;
-      const dist = Math.hypot(dx0, dy0);
+    document.body.appendChild(img);
+    setTimeout(() => img.remove(), 9000);
+  }
 
-      if (dist > TRIGGER_RADIUS) return;
+  // Ensure pointer known on click
+  function setPointerFromEvent(e) {
+    if (!e) return;
+    pointer.x = e.clientX;
+    pointer.y = e.clientY;
+  }
 
-      // Normalize direction away from pointer
-      let dx = dx0 / (dist || 1);
-      let dy = dy0 / (dist || 1);
+  yesBtn.addEventListener("click", () => {
+    accepted = true;
+    mainText.textContent = "As if you had a choice 😏";
+    arena.style.display = "none";
 
-      // Add small random jitter to avoid getting "stuck" in symmetric situations
-      dx += (Math.random() - 0.5) * JITTER;
-      dy += (Math.random() - 0.5) * JITTER;
+    if (heartsTimer) clearInterval(heartsTimer);
+    heartsTimer = setInterval(createHeart, 220);
+  });
 
-      const len = Math.hypot(dx, dy) || 1;
-      dx /= len; dy /= len;
+  noBtn.addEventListener("mousedown", (e) => setPointerFromEvent(e));
+  noBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (accepted) return;
 
-      // Move in a few smaller ticks for smoother feel
-      const usableW = Math.max(1, a.width - noBtn.offsetWidth);
-      const usableH = Math.max(1, a.height - noBtn.offsetHeight);
+    setPointerFromEvent(e);
+    showToast("Nice Try 😄", 2000);
+    moveNoRandomAwayFromCursor(); // ✅ now center-biased
+  });
 
-      for (let i = 0; i < MAX_TICKS_PER_MOVE; i++) {
-        noX = wrap(noX + dx * STEP, usableW);
-        noY = wrap(noY + dy * STEP, usableH);
-      }
+  arena.addEventListener("mousemove", (e) => {
+    if (accepted) return;
+    pointer.x = e.clientX;
+    pointer.y = e.clientY;
+    scheduleTick();
+  });
 
-      renderNo();
-    }
+  arena.addEventListener("mouseleave", () => {
+    pointer.x = null;
+    pointer.y = null;
+  });
 
-    // Prevent clicking "No"
-    noBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toast.textContent = "Nice try 😄";
-    });
-
-    // Mouse: run away with wrap-around (both x and y)
-    arena.addEventListener("mousemove", (e) => moveNoAway(e.clientX, e.clientY));
-
-    // Touch support
-    arena.addEventListener("touchstart", (e) => {
-      const t = e.touches[0];
-      moveNoAway(t.clientX, t.clientY);
-    }, { passive: true });
-
-    arena.addEventListener("touchmove", (e) => {
-      const t = e.touches[0];
-      moveNoAway(t.clientX, t.clientY);
-    }, { passive: true });
-
-    yesBtn.addEventListener("click", () => {
-      toast.textContent = "Yay! 🎉";
-    });
-
-    window.addEventListener("load", initNoPosition);
-    window.addEventListener("resize", initNoPosition);
-  </script>
+  window.addEventListener("load", defaultNoPosition);
+  window.addEventListener("resize", defaultNoPosition);
+</script>
 </body>
 </html>
