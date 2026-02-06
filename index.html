@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yes or No</title>
+  <style>
+    :root { --btnW: 140px; --btnH: 56px; }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      /* ✅ Background image */
+      background: url("background.jpg") center/cover no-repeat fixed;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Dark overlay so text is readable */
+    body::before{
+      content:"";
+      position:absolute; inset:0;
+      background: rgba(0,0,0,0.45);
+      pointer-events:none;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 24px;
+    }
+
+    h1 {
+      color: #fff;
+      font-size: clamp(2rem, 5vw, 4rem);
+      margin: 0 0 24px;
+      letter-spacing: 0.5px;
+      text-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    }
+
+    .btn-row {
+      position: relative;
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      align-items: center;
+      min-height: calc(var(--btnH) + 10px);
+    }
+
+    button {
+      width: var(--btnW);
+      height: var(--btnH);
+      border: none;
+      border-radius: 14px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+      transition: transform 120ms ease;
+      user-select: none;
+    }
+
+    #yesBtn {
+      background: #2ee59d;
+      color: #083a27;
+      font-weight: 700;
+    }
+    #yesBtn:active { transform: scale(0.98); }
+
+    /* The "No" button will be absolutely positioned so it can run away */
+    #noBtn {
+      background: #ff5c70;
+      color: #3a0b12;
+      font-weight: 700;
+      position: absolute;
+      left: calc(50% + 90px);  /* starts to the right of Yes */
+      top: 0;
+      cursor: not-allowed;
+      touch-action: none;
+    }
+
+    .toast {
+      margin-top: 18px;
+      color: rgba(255,255,255,0.9);
+      font-size: 1rem;
+      text-shadow: 0 6px 20px rgba(0,0,0,0.45);
+      min-height: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div>
+      <h1>Will you go on a date with me?</h1>
+
+      <div class="btn-row" id="arena">
+        <button id="yesBtn">Yes</button>
+        <button id="noBtn" aria-disabled="true" tabindex="-1">No</button>
+      </div>
+
+      <div class="toast" id="toast"></div>
+    </div>
+  </div>
+
+  <script>
+    const arena = document.getElementById("arena");
+    const noBtn = document.getElementById("noBtn");
+    const yesBtn = document.getElementById("yesBtn");
+    const toast = document.getElementById("toast");
+
+    // Initial placement (relative to the arena)
+    function placeNoInitially() {
+      const a = arena.getBoundingClientRect();
+      noBtn.style.left = Math.min(a.width - noBtn.offsetWidth, (a.width / 2) + 90) + "px";
+      noBtn.style.top = "0px";
+    }
+
+    // Utility
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+    function moveNoAwayFrom(pointerX, pointerY) {
+      const a = arena.getBoundingClientRect();
+
+      // Current center of the No button
+      const noRect = noBtn.getBoundingClientRect();
+      const noCenterX = noRect.left + noRect.width / 2;
+      const noCenterY = noRect.top + noRect.height / 2;
+
+      // Direction away from pointer
+      let dx = noCenterX - pointerX;
+      let dy = noCenterY - pointerY;
+
+      const len = Math.hypot(dx, dy) || 1;
+      dx /= len; dy /= len;
+
+      // How far to jump each time
+      const jump = 140;
+
+      // Current position within arena (read from style)
+      const curLeft = parseFloat(noBtn.style.left || "0");
+      const curTop  = parseFloat(noBtn.style.top  || "0");
+
+      let nextLeft = curLeft + dx * jump;
+      let nextTop  = curTop  + dy * jump;
+
+      // Keep inside arena bounds
+      nextLeft = clamp(nextLeft, 0, a.width - noBtn.offsetWidth);
+      nextTop  = clamp(nextTop, 0, a.height - noBtn.offsetHeight);
+
+      // If we somehow didn't move (corner case), randomize a little
+      if (Math.abs(nextLeft - curLeft) < 5 && Math.abs(nextTop - curTop) < 5) {
+        nextLeft = Math.random() * (a.width - noBtn.offsetWidth);
+        nextTop  = Math.random() * (a.height - noBtn.offsetHeight);
+      }
+
+      noBtn.style.left = nextLeft + "px";
+      noBtn.style.top  = nextTop + "px";
+    }
+
+    // "No" cannot be clicked: prevent click and also make it run away on approach
+    noBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toast.textContent = "Nice try 😄";
+    });
+
+    // Runs away when mouse gets close
+    arena.addEventListener("mousemove", (e) => {
+      const noRect = noBtn.getBoundingClientRect();
+      const cx = noRect.left + noRect.width / 2;
+      const cy = noRect.top + noRect.height / 2;
+
+      const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+      const triggerRadius = 120; // distance threshold
+
+      if (dist < triggerRadius) moveNoAwayFrom(e.clientX, e.clientY);
+    });
+
+    // Works on touch devices too (finger gets close)
+    arena.addEventListener("touchstart", (e) => {
+      const t = e.touches[0];
+      moveNoAwayFrom(t.clientX, t.clientY);
+    }, { passive: true });
+
+    arena.addEventListener("touchmove", (e) => {
+      const t = e.touches[0];
+      moveNoAwayFrom(t.clientX, t.clientY);
+    }, { passive: true });
+
+    yesBtn.addEventListener("click", () => {
+      toast.textContent = "Yay! 🎉";
+    });
+
+    // Initialize
+    window.addEventListener("load", placeNoInitially);
+    window.addEventListener("resize", placeNoInitially);
+  </script>
+</body>
+</html>
